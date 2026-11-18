@@ -1,0 +1,6 @@
+{
+  "name": "Meridian Heikin Ashi Terminal",
+  "description": "Two-week Heikin Ashi market terminal with color-coded asset buttons across equities, ETFs, crypto, commodities, and FX.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

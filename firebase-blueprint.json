@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "AllowedEmail": {
+      "title": "AllowedEmail",
+      "description": "Allowlisted user account with role assignment for SignalGap access control.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 128,
+          "description": "Lowercase verified email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "member"],
+          "description": "Access tier: admin shares the master watchlist and manages access; member gets a personal watchlist."
+        },
+        "addedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Email of the admin who granted access."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when allowlist entry was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when allowlist entry was last modified."
+        }
+      },
+      "required": ["email", "role", "addedBy", "createdAt", "updatedAt"]
+    },
+    "UserWatchlist": {
+      "title": "UserWatchlist",
+      "description": "Saved custom category tickers, removed baseline symbols, and pinned favorites for either shared_admin or an individual member.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Either 'shared_admin' for admins or the user's Firebase Auth UID."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["shared_admin", "personal"],
+          "description": "Whether this watchlist is the shared admin workspace or a member personal list."
+        },
+        "customAssets": {
+          "type": "array",
+          "description": "Custom instruments added to FX, Stocks, Crypto, or Commodities (max 60)."
+        },
+        "removedSymbols": {
+          "type": "array",
+          "description": "Symbols hidden from this watchlist (max 50)."
+        },
+        "favorites": {
+          "type": "array",
+          "description": "Starred ticker symbols (max 80)."
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Email of the last user who updated this watchlist."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last update."
+        }
+      },
+      "required": [
+        "ownerId",
+        "scope",
+        "customAssets",
+        "removedSymbols",
+        "favorites",
+        "updatedBy",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/allowed_emails/{emailId}": {
+      "schema": { "$ref": "#/entities/AllowedEmail" },
+      "description": "Allowlist of authorized emails keyed by lowercase email address."
+    },
+    "/watchlists/{watchlistId}": {
+      "schema": { "$ref": "#/entities/UserWatchlist" },
+      "description": "Shared admin watchlist ('shared_admin') and per-member personal watchlists ('{uid}')."
+    }
+  }
+}

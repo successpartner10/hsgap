@@ -1,0 +1,227 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny all unspecified paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+
+    function userEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isBootstrappedAdminEmail(emailStr) {
+      return emailStr == 'sunnyguy664@gmail.com' || emailStr == 'sandipyashpal@gmail.com';
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && isBootstrappedAdminEmail(userEmail());
+    }
+
+    function isValidEmailId(emailId) {
+      return emailId is string
+        && emailId.size() >= 5
+        && emailId.size() <= 128
+        && emailId.matches('^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$');
+    }
+
+    function isValidWatchlistId(watchlistId) {
+      return watchlistId is string
+        && watchlistId.size() >= 3
+        && watchlistId.size() <= 128
+        && watchlistId.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser()
+        && exists(/databases/$(database)/documents/allowed_emails/$(userEmail()))
+        && get(/databases/$(database)/documents/allowed_emails/$(userEmail())).data.role == 'admin'
+      );
+    }
+
+    function isAllowedUser() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser()
+        && exists(/databases/$(database)/documents/allowed_emails/$(userEmail()))
+      );
+    }
+
+    function isValidAllowedEmail(data, emailId) {
+      return data.keys().hasAll(['email', 'role', 'addedBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['email', 'role', 'addedBy', 'createdAt', 'updatedAt'])
+        && data.email is string
+        && data.email.size() >= 5
+        && data.email.size() <= 128
+        && data.email == emailId
+        && data.role in ['admin', 'member']
+        && data.addedBy is string
+        && data.addedBy.size() >= 5
+        && data.addedBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWatchlist(data, watchlistId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'scope',
+          'customAssets',
+          'removedSymbols',
+          'favorites',
+          'updatedBy',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'scope',
+          'customAssets',
+          'removedSymbols',
+          'favorites',
+          'updatedBy',
+          'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 3
+        && data.ownerId.size() <= 128
+        && data.ownerId == watchlistId
+        && data.scope in ['shared_admin', 'personal']
+        && (
+          (watchlistId == 'shared_admin' && data.scope == 'shared_admin') ||
+          (watchlistId != 'shared_admin' && data.scope == 'personal')
+        )
+        && data.customAssets is list
+        && data.customAssets.size() <= 60
+        && (
+          data.customAssets.size() == 0 || (
+            data.customAssets[0] is map
+            && data.customAssets[0].keys().hasAll(['symbol', 'yahooSymbol', 'displaySymbol', 'name', 'type'])
+            && data.customAssets[0].keys().hasOnly(['symbol', 'yahooSymbol', 'displaySymbol', 'name', 'type'])
+            && data.customAssets[0].symbol is string
+            && data.customAssets[0].symbol.size() >= 1
+            && data.customAssets[0].symbol.size() <= 24
+            && data.customAssets[0].yahooSymbol is string
+            && data.customAssets[0].yahooSymbol.size() >= 1
+            && data.customAssets[0].yahooSymbol.size() <= 24
+            && data.customAssets[0].displaySymbol is string
+            && data.customAssets[0].displaySymbol.size() >= 1
+            && data.customAssets[0].displaySymbol.size() <= 24
+            && data.customAssets[0].name is string
+            && data.customAssets[0].name.size() >= 1
+            && data.customAssets[0].name.size() <= 80
+            && data.customAssets[0].type in ['FX', 'Equities', 'Crypto', 'Commodities']
+          )
+        )
+        && data.removedSymbols is list
+        && data.removedSymbols.size() <= 50
+        && (
+          data.removedSymbols.size() == 0 || (
+            data.removedSymbols[0] is string
+            && data.removedSymbols[0].size() >= 1
+            && data.removedSymbols[0].size() <= 24
+          )
+        )
+        && data.favorites is list
+        && data.favorites.size() <= 80
+        && (
+          data.favorites.size() == 0 || (
+            data.favorites[0] is string
+            && data.favorites[0].size() >= 1
+            && data.favorites[0].size() <= 24
+          )
+        )
+        && data.updatedBy is string
+        && data.updatedBy.size() >= 5
+        && data.updatedBy.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    match /allowed_emails/{emailId} {
+      allow get: if isValidEmailId(emailId) && (
+        isAdmin() || (isVerifiedUser() && userEmail() == emailId)
+      );
+      allow list: if isAdmin();
+
+      allow create: if isAdmin()
+        && isValidEmailId(emailId)
+        && isValidAllowedEmail(incoming(), emailId)
+        && incoming().addedBy == userEmail()
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isAdmin()
+        && isValidEmailId(emailId)
+        && isValidAllowedEmail(incoming(), emailId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'addedBy', 'updatedAt'])
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().addedBy == userEmail()
+        && incoming().updatedAt == request.time
+        && (!isBootstrappedAdminEmail(emailId) || incoming().role == 'admin');
+
+      allow delete: if isAdmin()
+        && isValidEmailId(emailId)
+        && !isBootstrappedAdminEmail(emailId);
+    }
+
+    match /watchlists/{watchlistId} {
+      allow get: if isValidWatchlistId(watchlistId) && isAllowedUser() && (
+        (watchlistId == 'shared_admin' && isAdmin()) ||
+        (watchlistId == request.auth.uid)
+      );
+
+      allow list: if false;
+
+      allow create: if isValidWatchlistId(watchlistId)
+        && isAllowedUser()
+        && isValidWatchlist(incoming(), watchlistId)
+        && incoming().updatedBy == userEmail()
+        && incoming().updatedAt == request.time
+        && (
+          (watchlistId == 'shared_admin' && isAdmin()) ||
+          (watchlistId == request.auth.uid && !isAdmin())
+        );
+
+      allow update: if isValidWatchlistId(watchlistId)
+        && isAllowedUser()
+        && isValidWatchlist(incoming(), watchlistId)
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'customAssets',
+          'removedSymbols',
+          'favorites',
+          'updatedBy',
+          'updatedAt'
+        ])
+        && incoming().ownerId == existing().ownerId
+        && incoming().scope == existing().scope
+        && incoming().updatedBy == userEmail()
+        && incoming().updatedAt == request.time
+        && (
+          (watchlistId == 'shared_admin' && isAdmin()) ||
+          (watchlistId == request.auth.uid && !isAdmin())
+        );
+
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Raleway', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  html,
+  body,
+  button,
+  input,
+  select,
+  textarea {
+    font-family: var(--font-sans);
+    font-variant-numeric: lining-nums;
+  }
+
+  body {
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  .font-mono-tabular {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

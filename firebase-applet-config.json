@@ -1,0 +1,10 @@
+{
+  "projectId": "hsgap-live",
+  "appId": "1:715307450812:web:ac68a0f1c221170cc9abb9",
+  "apiKey": "AIzaSyBPU2L0lBR4RUeW74LullsMnXSLXrs10qg",
+  "authDomain": "hsgap-live.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "hsgap-live.firebasestorage.app",
+  "messagingSenderId": "715307450812",
+  "measurementId": "G-G4CNELKN9W"
+}
